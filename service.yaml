@@ -1,0 +1,94 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${SERVICE_NAME}
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/container-dependencies: "{}"
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/minScale: "${MIN_SCALE}"
+        autoscaling.knative.dev/maxScale: "${MAX_SCALE}"
+    spec:
+      volumes:
+        # GCS Bucket Volume (For Persistence)
+        - name: mesh-data
+          csi:
+            driver: gcsfuse.run.googleapis.com
+            volumeAttributes:
+              bucketName: meshcentral-data-${GCP_PROJECT_ID}
+              mountOptions: "uid=1000,gid=1000"
+      containers:
+        # === CONTAINER 1: DUMMY INGRESS (Guard) ===
+        # Blocks public traffic. User customization preserved.
+        - image: us-docker.pkg.dev/cloudrun/container/hello
+          name: ingress-guard
+          ports:
+            - containerPort: 8080
+              name: http1
+          resources:
+            limits:
+              cpu: "${INGRESS_CPU}"
+              memory: "${INGRESS_MEMORY}"
+
+        # === CONTAINER 2: MESHCENTRAL (Internal App) ===
+        - image: gcr.io/${GCP_PROJECT_ID}/meshcentral:${MESHCENTRAL_VERSION}
+          name: meshcentral
+          # Use GCS mounted path for config and data
+          command: ["node"]
+          args:
+            - "meshcentral"
+            - "--configfile"
+            - "/home/node/meshcentral-data/config.json"
+            - "--datapath"
+            - "/home/node/meshcentral-data"
+          volumeMounts:
+            - name: mesh-data
+              mountPath: /home/node/meshcentral-data
+          env: # Run internally on 3000
+            - name: HOSTNAME
+              value: "${DOMAIN}"
+            - name: REVERSE_PROXY
+              value: "true"
+            - name: DOMAIN
+              value: "${DOMAIN}"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            limits:
+              cpu: "${MESH_CPU}"
+              memory: "${MESH_MEMORY}"
+          # Startup probe to ensure readiness
+          startupProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+
+        # === CONTAINER 3: CLOUDFLARE TUNNEL (Sidecar) ===
+        - image: cloudflare/cloudflared:latest
+          name: cloudflared
+          args:
+            [
+              "tunnel",
+              "--no-autoupdate",
+              "run",
+              "--protocol",
+              "http2",
+              "--token",
+              "${CLOUDFLARE_TOKEN}",
+            ]
+          env:
+            - name: TUNNEL_TRANSPORT_PROTOCOL
+              value: "http2"
+          resources:
+            limits:
+              cpu: "${TUNNEL_CPU}"
+              memory: "${TUNNEL_MEMORY}"

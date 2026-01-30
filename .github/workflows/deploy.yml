@@ -1,0 +1,166 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  # Default to 'us-central1' if variable is not set
+  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  # Default Service Name
+  SERVICE_NAME: ${{ vars.SERVICE_NAME || 'meshcentral-server' }}
+  DOMAIN: ${{ vars.DOMAIN }}
+  MESHCENTRAL_VERSION: ${{ vars.MESHCENTRAL_VERSION }}
+  
+  # Resource Configuration (Defaults)
+  # Scale to Zero settings
+  MIN_SCALE: ${{ vars.MIN_SCALE || '0' }}
+  MAX_SCALE: ${{ vars.MAX_SCALE || '3' }}
+  
+  # Resource Limits
+  INGRESS_CPU: ${{ vars.INGRESS_CPU || '100m' }}
+  INGRESS_MEMORY: ${{ vars.INGRESS_MEMORY || '128Mi' }}
+  
+  MESH_CPU: ${{ vars.MESH_CPU || '1000m' }}
+  MESH_MEMORY: ${{ vars.MESH_MEMORY || '1Gi' }}
+  
+  TUNNEL_CPU: ${{ vars.TUNNEL_CPU || '500m' }}
+  TUNNEL_MEMORY: ${{ vars.TUNNEL_MEMORY || '256Mi' }}
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get secrets from Secret Manager
+        id: secrets
+        run: |
+          echo "MONGO_URL=$(gcloud secrets versions access latest --secret=mongo-url)" >> $GITHUB_OUTPUT
+          echo "CLOUDFLARE_TOKEN=$(gcloud secrets versions access latest --secret=cloudflare-token)" >> $GITHUB_OUTPUT
+          echo "OIDC_CLIENT_ID=$(gcloud secrets versions access latest --secret=oidc-client-id)" >> $GITHUB_OUTPUT
+          echo "OIDC_CLIENT_SECRET=$(gcloud secrets versions access latest --secret=oidc-client-secret)" >> $GITHUB_OUTPUT
+          echo "OIDC_ISSUER=$(gcloud secrets versions access latest --secret=oidc-issuer)" >> $GITHUB_OUTPUT
+
+      - name: Generate config.json
+        run: |
+          cat > config.json <<'EOF'
+          {
+            "$schema": "http://info.meshcentral.com/downloads/meshcentral-config-schema.json",
+            "settings": {
+              "MongoDb": "${{ steps.secrets.outputs.MONGO_URL }}",
+              "cert": "${{ env.DOMAIN }}",
+              "AllowedOrigins": ["${{ env.DOMAIN }}", "https://${{ env.DOMAIN }}"],
+              "ReferrerAliases": ["${{ env.DOMAIN }}"],
+              "TrustedProxy": ["127.0.0.1", "::1"],
+              "UserNameIsEmail": true,
+              "RootCert": "/home/node/meshcentral-data/root-cert-public.crt",
+              "RootKey": "/home/node/meshcentral-data/root-cert-private.key",
+              "Port": 3000,
+              "AliasPort": 443,
+              "TlsOffload": "127.0.0.1",
+              "SelfUpdate": false,
+              "AllowLoginToken": true,
+              "WANonly": true,
+              "Minify": true
+            },
+            "domains": {
+              "": {
+                "certUrl": "https://${{ env.DOMAIN }}",
+                "Title": "MeshCentral",
+                "Title2": "Cloud Run",
+                "NewAccounts": true,
+                "authStrategies": {
+                  "oidc": {
+                    "issuer": "${{ steps.secrets.outputs.OIDC_ISSUER }}",
+                    "clientid": "${{ steps.secrets.outputs.OIDC_CLIENT_ID }}",
+                    "clientsecret": "${{ steps.secrets.outputs.OIDC_CLIENT_SECRET }}",
+                    "newAccounts": true,
+                    "client": {
+                      "redirect_uri": "https://${{ env.DOMAIN }}/auth-oidc-callback"
+                    }
+                  }
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Upload config.json to GCS
+        run: |
+          BUCKET_NAME="meshcentral-data-${{ env.GCP_PROJECT_ID }}"
+          GCS_PATH="gs://${BUCKET_NAME}/config.json"
+
+          if gsutil ls "$GCS_PATH" > /dev/null 2>&1; then
+            echo "Config file exists in bucket. Skipping upload to preserve manual changes."
+            echo "To force update, delete the file manually: gsutil rm $GCS_PATH"
+          else
+            echo "Uploading config.json to $GCS_PATH..."
+            gsutil cp config.json "$GCS_PATH"
+          fi
+
+      - name: Import Docker image from GHCR to GCR
+        run: |
+          # Configure docker to use gcloud as credential helper
+          gcloud auth configure-docker gcr.io
+
+          # Pull from GHCR
+          docker pull ghcr.io/ylianst/meshcentral:${{ env.MESHCENTRAL_VERSION }}
+
+          # Tag for GCR
+          docker tag ghcr.io/ylianst/meshcentral:${{ env.MESHCENTRAL_VERSION }} gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral:${{ env.MESHCENTRAL_VERSION }}
+
+          # Push to GCR
+          docker push gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral:${{ env.MESHCENTRAL_VERSION }}
+
+      - name: Prepare service.yaml with secrets
+        run: |
+
+          export MONGO_URL="${{ steps.secrets.outputs.MONGO_URL }}"
+          export DOMAIN="${{ env.DOMAIN }}"
+          export CLOUDFLARE_TOKEN="${{ steps.secrets.outputs.CLOUDFLARE_TOKEN }}"
+          export GCP_PROJECT_ID="${{ env.GCP_PROJECT_ID }}"
+          export MESHCENTRAL_VERSION="${{ env.MESHCENTRAL_VERSION }}"
+          export SERVICE_NAME="${{ env.SERVICE_NAME }}"
+          
+          # Scaling
+          export MIN_SCALE="${{ env.MIN_SCALE }}"
+          export MAX_SCALE="${{ env.MAX_SCALE }}"
+          
+          # Resources
+          export INGRESS_CPU="${{ env.INGRESS_CPU }}"
+          export INGRESS_MEMORY="${{ env.INGRESS_MEMORY }}"
+          export MESH_CPU="${{ env.MESH_CPU }}"
+          export MESH_MEMORY="${{ env.MESH_MEMORY }}"
+          export TUNNEL_CPU="${{ env.TUNNEL_CPU }}"
+          export TUNNEL_MEMORY="${{ env.TUNNEL_MEMORY }}"
+          
+          envsubst '${MONGO_URL} ${DOMAIN} ${CLOUDFLARE_TOKEN} ${GCP_PROJECT_ID} ${MESHCENTRAL_VERSION} ${SERVICE_NAME} ${MIN_SCALE} ${MAX_SCALE} ${INGRESS_CPU} ${INGRESS_MEMORY} ${MESH_CPU} ${MESH_MEMORY} ${TUNNEL_CPU} ${TUNNEL_MEMORY}' < service.yaml > service.resolved.yaml
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services replace service.resolved.yaml --region ${{ env.GCP_REGION }}
+
+      - name: Get service URL
+        run: |
+          WAKEUP_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.GCP_REGION }} --format 'value(status.url)')
+          echo "Service URL: $WAKEUP_URL"
+          echo "Access your service at: https://${{ env.DOMAIN }}"

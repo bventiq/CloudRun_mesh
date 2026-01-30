@@ -1,0 +1,27 @@
+# Ignore environment files with secrets
+.env
+
+# Ignore generated/resolved files
+service.resolved.yaml
+
+# Ignore config.json (managed via Secret Manager)
+config.json
+config-*.json
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+
+# OS files
+.DS_Store
+
+# Certificates
+*.key
+*.crt
+*.pfx
+
+# Logs and temporary files
+*.log
+*_logs.txt
+temp-*.txt
+*.bak
