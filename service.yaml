@@ -22,7 +22,7 @@ spec:
             driver: gcsfuse.run.googleapis.com
             volumeAttributes:
               bucketName: meshcentral-data-${GCP_PROJECT_ID}
-              mountOptions: "uid=1000,gid=1000,file-cache:max-size-mb:64,file-cache:cache-file-for-range-read:true"
+              mountOptions: "uid=1000,gid=1000"
       containers:
         # === CONTAINER 1: DUMMY INGRESS (Guard) ===
         # Blocks public traffic. User customization preserved.
