@@ -80,7 +80,7 @@ jobs:
               "SelfUpdate": false,
               "AllowLoginToken": true,
               "WANonly": true,
-              "Minify": true
+              "Minify": false
             },
             "domains": {
               "": {
@@ -117,16 +117,16 @@ jobs:
             gsutil cp config.json "$GCS_PATH"
           fi
 
-      - name: Import Docker image from GHCR to GCR
+      - name: Build and Push Docker image
         run: |
           # Configure docker to use gcloud as credential helper
           gcloud auth configure-docker gcr.io
 
-          # Pull from GHCR
-          docker pull ghcr.io/ylianst/meshcentral:${{ env.MESHCENTRAL_VERSION }}
-
-          # Tag for GCR
-          docker tag ghcr.io/ylianst/meshcentral:${{ env.MESHCENTRAL_VERSION }} gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral:${{ env.MESHCENTRAL_VERSION }}
+          # Build Image (using the Dockerfile in root)
+          docker build \
+            --build-arg MESHCENTRAL_VERSION=${{ env.MESHCENTRAL_VERSION }} \
+            -t gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral:${{ env.MESHCENTRAL_VERSION }} \
+            .
 
           # Push to GCR
           docker push gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral:${{ env.MESHCENTRAL_VERSION }}

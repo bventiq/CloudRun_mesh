@@ -68,9 +68,9 @@ spec:
             httpGet:
               path: /
               port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 30
+            initialDelaySeconds: 1
+            periodSeconds: 3
+            failureThreshold: 60
 
         # === CONTAINER 3: CLOUDFLARE TUNNEL (Sidecar) ===
         - image: cloudflare/cloudflared:latest

@@ -38,6 +38,8 @@ Google Cloud Run 上に MeshCentral をデプロイし、GitHub Actions で自�
 [Secret Manager] : 認証情報
 ```
 
+**備考**: MeshCentral コンテナは、起動速度向上のため、公式イメージをベースに必要なモジュール（OIDC等）をプリインストールしたカスタムイメージを使用しています。
+
 ## クイックスタート
 
 詳細な手順は [SETUP_GUIDE.md](SETUP_GUIDE.md) を参照してください。
@@ -116,6 +118,7 @@ GCS バケット（`gs://meshcentral-data-{PROJECT_ID}/config.json`）に保存�
 - 古いインストーラーには `:3000` ポートが含まれている可能性があります
 
 ### サービスが起動しない
+
 - Cloud Run ログを確認: `gcloud run services logs read meshcentral-server --region us-central1`
 - Cloudflare Tunnel が `http://localhost:3000` を指しているか確認
 

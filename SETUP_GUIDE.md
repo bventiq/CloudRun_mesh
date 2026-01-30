@@ -156,9 +156,6 @@ gcloud iam service-accounts add-iam-policy-binding \
 echo -n "mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/meshcentral" | \
   gcloud secrets create mongo-url --data-file=-
 
-# Cloudflare Token（後で設定）
-echo -n "YOUR_CLOUDFLARE_TOKEN" | \
-  gcloud secrets create cloudflare-token --data-file=-
 ```
 
 ### 3.3 OIDC シークレット（オプション）
@@ -313,6 +310,7 @@ cd CloudRun_mesh
 ```bash
 ```bash
 # 何も変更しなくても、main ブランチへの push でデプロイが走ります（初回）
+# GitHub Actions が Docker イメージをビルド（モジュール追加）してデプロイします
 git push origin main
 
 # または空のコミットでトリガー
