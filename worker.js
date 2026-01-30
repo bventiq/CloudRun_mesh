@@ -1,5 +1,5 @@
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     // 1. Try to fetch the request from the Origin (MeshCentral Tunnel)
     // When configured as a Route (e.g. mesh.example.com/*), this fetches the underlying Tunnel.
     // If the Tunnel is down, Cloudflare throws a 530/502/521/523 error.
@@ -49,7 +49,13 @@ export default {
       }
     }
 
-    // Tunnel is up, or it's an API request, or user forced bypass
+    // Tunnel is up — ping Cloud Run in the background to keep the instance alive
+    if (env.CLOUD_RUN_URL) {
+      ctx.waitUntil(
+        fetch(env.CLOUD_RUN_URL).catch(err => console.error("Keepalive ping failed", err))
+      );
+    }
+
     return response;
   },
 };
@@ -60,7 +66,7 @@ function getLoadingHtml(statusCode) {
 <html>
 <head>
   <title>Waking up MeshCentral...</title>
-  <meta http-equiv="refresh" content="5">
+  <meta http-equiv="refresh" content="3">
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0f2f5; color: #333; margin: 0; }
     .container { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }

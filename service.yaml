@@ -22,7 +22,7 @@ spec:
             driver: gcsfuse.run.googleapis.com
             volumeAttributes:
               bucketName: meshcentral-data-${GCP_PROJECT_ID}
-              mountOptions: "uid=1000,gid=1000"
+              mountOptions: "uid=1000,gid=1000,file-cache:max-size-mb:64,file-cache:cache-file-for-range-read:true"
       containers:
         # === CONTAINER 1: DUMMY INGRESS (Guard) ===
         # Blocks public traffic. User customization preserved.
@@ -69,11 +69,11 @@ spec:
               path: /
               port: 3000
             initialDelaySeconds: 1
-            periodSeconds: 3
-            failureThreshold: 60
+            periodSeconds: 1
+            failureThreshold: 180
 
         # === CONTAINER 3: CLOUDFLARE TUNNEL (Sidecar) ===
-        - image: cloudflare/cloudflared:latest
+        - image: cloudflare/cloudflared:2025.4.2
           name: cloudflared
           args:
             [
