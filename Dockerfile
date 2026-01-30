@@ -8,7 +8,7 @@ FROM ghcr.io/ylianst/meshcentral:${MESHCENTRAL_VERSION}
 USER root
 
 # Pre-install dependencies for OIDC to prevent runtime installation
-RUN cd ./node_modules/meshcentral && \
+RUN cd /opt/meshcentral/meshcentral && \
     npm install passport@0.7.0 connect-flash@0.1.1 openid-client@5.7.1
 
 USER node
