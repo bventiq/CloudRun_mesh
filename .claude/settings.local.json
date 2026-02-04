@@ -14,7 +14,13 @@
       "Bash(gcloud run services describe:*)",
       "Bash(gcloud logging read:*)",
       "Bash(curl:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(source:*)",
+      "Bash(echo:*)",
+      "Bash(gcloud secrets versions add:*)",
+      "Bash(bash -c 'source /Users/bventi/git/CloudRun_mesh/.env && echo -n \"\"$MONGO_URL\"\" | gcloud secrets versions add mongo-url --data-file=- --project=private-project-485302')",
+      "Bash(bash -c 'source /Users/bventi/git/CloudRun_mesh/.env && gcloud run services update meshcentral-server --region=us-central1 --project=private-project-485302 --update-labels=force-restart=$\\(date +%s\\)')",
+      "Bash(bash -c:*)"
     ]
   }
 }
