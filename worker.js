@@ -38,7 +38,9 @@ export default {
         // 3. Ping the Cloud Run instance to wake it up
         if (env.CLOUD_RUN_URL) {
           console.log(`Pinging Cloud Run at ${env.CLOUD_RUN_URL} to wake up...`);
-          fetch(env.CLOUD_RUN_URL).catch(err => console.error("Wakeup ping failed", err));
+          ctx.waitUntil(
+            fetch(env.CLOUD_RUN_URL).catch(err => console.error("Wakeup ping failed", err))
+          );
         }
 
         // 4. Return a "Waking Up" HTML page with status info
