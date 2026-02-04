@@ -1,6 +1,0 @@
-name = "cloudrun-mesh"
-main = "worker.js"
-compatibility_date = "2024-01-25"
-
-# Environment variables like CLOUD_RUN_URL should be set in the Cloudflare Dashboard
-# under Settings -> Variables after connecting the repository.

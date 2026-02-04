@@ -1,0 +1,13 @@
+name = "cloudrun-mesh"
+main = "worker.js"
+compatibility_date = "2024-01-25"
+
+routes = [
+  { pattern = "${WORKER_ROUTE}", zone_name = "${ZONE_NAME}" }
+]
+
+[observability.logs]
+enabled = true
+
+# CLOUD_RUN_URL is set via Cloudflare Dashboard (Settings > Variables)
+# Build command: envsubst < wrangler.toml.example > wrangler.toml && npx wrangler deploy --keep-vars
