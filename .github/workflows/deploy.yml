@@ -108,14 +108,8 @@ jobs:
         run: |
           BUCKET_NAME="meshcentral-data-${{ env.GCP_PROJECT_ID }}"
           GCS_PATH="gs://${BUCKET_NAME}/config.json"
-
-          if gsutil ls "$GCS_PATH" > /dev/null 2>&1; then
-            echo "Config file exists in bucket. Skipping upload to preserve manual changes."
-            echo "To force update, delete the file manually: gsutil rm $GCS_PATH"
-          else
-            echo "Uploading config.json to $GCS_PATH..."
-            gsutil cp config.json "$GCS_PATH"
-          fi
+          echo "Uploading config.json to $GCS_PATH..."
+          gsutil cp config.json "$GCS_PATH"
 
       - name: Build and Push Docker image
         run: |
