@@ -6,8 +6,10 @@ routes = [
   { pattern = "${WORKER_ROUTE}", zone_name = "${ZONE_NAME}" }
 ]
 
+[vars]
+CLOUD_RUN_URL = "${CLOUD_RUN_URL}"
+
 [observability.logs]
 enabled = true
 
-# CLOUD_RUN_URL is set via Cloudflare Dashboard (Settings > Variables)
-# Build command: envsubst < wrangler.toml.example > wrangler.toml && npx wrangler deploy --keep-vars
+# Build command: envsubst < wrangler.toml.example > wrangler.toml && npx wrangler deploy

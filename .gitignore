@@ -8,8 +8,8 @@ service.resolved.yaml
 config.json
 config-*.json
 
-# Cloudflare Workers config (routes/vars managed via Dashboard)
-wrangler.toml
+# Cloudflare Workers secrets (local dev)
+.dev.vars
 
 # Node modules (if any)
 node_modules/
