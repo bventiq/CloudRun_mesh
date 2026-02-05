@@ -158,6 +158,12 @@ jobs:
         run: |
           gcloud run services replace service.resolved.yaml --region ${{ env.GCP_REGION }}
 
+      - name: Set scaling limits
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} --region ${{ env.GCP_REGION }} \
+            --min-instances=${{ env.MIN_SCALE }} \
+            --max-instances=${{ env.MAX_SCALE }}
+
       - name: Get service URL
         run: |
           WAKEUP_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.GCP_REGION }} --format 'value(status.url)')
