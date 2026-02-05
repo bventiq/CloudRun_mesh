@@ -28,6 +28,9 @@ env:
   
   TUNNEL_CPU: ${{ vars.TUNNEL_CPU || '500m' }}
   TUNNEL_MEMORY: ${{ vars.TUNNEL_MEMORY || '256Mi' }}
+  
+  # Runtime Service Account (constructed per project standard)
+  RUNTIME_SERVICE_ACCOUNT: meshcentral-runtime@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
 jobs:
   deploy:
@@ -145,9 +148,11 @@ jobs:
           export MESH_CPU="${{ env.MESH_CPU }}"
           export MESH_MEMORY="${{ env.MESH_MEMORY }}"
           export TUNNEL_CPU="${{ env.TUNNEL_CPU }}"
+          export TUNNEL_CPU="${{ env.TUNNEL_CPU }}"
           export TUNNEL_MEMORY="${{ env.TUNNEL_MEMORY }}"
+          export RUNTIME_SERVICE_ACCOUNT="${{ env.RUNTIME_SERVICE_ACCOUNT }}"
           
-          envsubst '${MONGO_URL} ${DOMAIN} ${CLOUDFLARE_TOKEN} ${GCP_PROJECT_ID} ${MESHCENTRAL_VERSION} ${SERVICE_NAME} ${MIN_SCALE} ${MAX_SCALE} ${INGRESS_CPU} ${INGRESS_MEMORY} ${MESH_CPU} ${MESH_MEMORY} ${TUNNEL_CPU} ${TUNNEL_MEMORY}' < service.yaml > service.resolved.yaml
+          envsubst '${MONGO_URL} ${DOMAIN} ${CLOUDFLARE_TOKEN} ${GCP_PROJECT_ID} ${MESHCENTRAL_VERSION} ${SERVICE_NAME} ${MIN_SCALE} ${MAX_SCALE} ${INGRESS_CPU} ${INGRESS_MEMORY} ${MESH_CPU} ${MESH_MEMORY} ${TUNNEL_CPU} ${TUNNEL_MEMORY} ${RUNTIME_SERVICE_ACCOUNT}' < service.yaml > service.resolved.yaml
 
       - name: Deploy to Cloud Run
         run: |

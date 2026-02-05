@@ -15,6 +15,7 @@ spec:
         autoscaling.knative.dev/minScale: "${MIN_SCALE}"
         autoscaling.knative.dev/maxScale: "${MAX_SCALE}"
     spec:
+      serviceAccountName: ${RUNTIME_SERVICE_ACCOUNT}
       volumes:
         # GCS Bucket Volume (For Persistence)
         - name: mesh-data
