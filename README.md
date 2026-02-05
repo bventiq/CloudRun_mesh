@@ -76,7 +76,7 @@ CloudRun_mesh/
 ├── service.yaml            # Cloud Run サービス定義
 ├── importer.yaml           # Docker イメージインポート設定
 ├── worker.js               # Cloudflare Worker（自動起動）
-├── wrangler.toml           # Worker 設定
+├── wrangler.toml.example   # Worker 設定テンプレート（source of truth）
 ├── setup_certs.ps1         # 証明書セットアップスクリプト
 ├── test-mongo.js           # MongoDB 接続テスト
 ├── package.json            # Node.js 依存関係

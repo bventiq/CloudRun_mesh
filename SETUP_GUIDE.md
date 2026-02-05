@@ -336,55 +336,26 @@ gcloud run services describe meshcentral-server --region us-central1 --format 'v
 
 出力例: `https://meshcentral-server-xxxxx.us-central1.run.app`
 
-### 7.2 Worker のデプロイ
-
-#### 方法 1: GitHub 連携（推奨・自動デプロイ）
+### 7.2 Worker のデプロイ（GitHub 連携・自動デプロイ）
 
 1. [Cloudflare Dashboard](https://dash.cloudflare.com/) にログイン
 2. Workers & Pages > Create application > Pages > Connect to Git
 3. GitHub リポジトリ `CloudRun_mesh` を選択
 4. Build settings:
-   - **Build command**: （空欄のまま）
+   - **Build command**: `envsubst < wrangler.toml.example > wrangler.toml`
    - **Build output directory**: `/`
    - **Root directory**: `/`
-5. Environment variables を設定:
-   - Variable name: `CLOUD_RUN_URL`
-   - Value: `https://meshcentral-server-xxxxx.us-central1.run.app`（7.1 で取得した URL）
+5. **Environment variables** に以下を設定:
+   - `CLOUD_RUN_URL`: `https://meshcentral-server-xxxxx.us-central1.run.app`（7.1 で取得した URL）
+   - `WORKER_ROUTE`: `mesh.example.com/*`（あなたのドメイン）
+   - `ZONE_NAME`: `example.com`（あなたのゾーン名）
 6. Save and Deploy をクリック
 
 **自動デプロイ設定完了！**
-これで `main` ブランチに push するたびに Worker が自動的にデプロイされます。
+これで `main` ブランチに push するたびに、`wrangler.toml.example` テンプレートから環境変数が展開され、Worker が自動的にデプロイされます。
 
-#### 方法 2: 手動デプロイ（Dashboard）
-
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) にログイン
-2. Workers & Pages > Create Worker
-3. [worker.js](worker.js) の内容をコピー & ペースト
-4. Settings > Variables で環境変数を設定:
-   - Variable name: `CLOUD_RUN_URL`
-   - Value: `https://meshcentral-server-xxxxx.us-central1.run.app`
-5. Save and Deploy
-
-#### 方法 3: Wrangler CLI
-
-```bash
-# wrangler.toml を編集して CLOUD_RUN_URL を設定
-nano wrangler.toml
-
-# デプロイ
-npx wrangler deploy
-```
-
-### 7.3 Route の設定
-
-Cloudflare Pages（方法1）を使用した場合：
-1. Workers & Pages > 作成した Pages プロジェクト > Settings > Custom domains
-2. Add custom domain: `mesh.example.com`
-
-手動デプロイ（方法2）を使用した場合：
-1. Workers & Pages > Routes > Add Route
-2. Route: `mesh.example.com/*`
-3. Worker: 作成した Worker を選択
+> **Note**: `wrangler.toml` はテンプレートから生成されるため `.gitignore` に含まれています。
+> 設定の source of truth は `wrangler.toml.example` です。
 
 ---
 
