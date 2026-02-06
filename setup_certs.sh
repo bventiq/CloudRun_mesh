@@ -141,7 +141,20 @@ for secret_pair in "${SECRETS[@]}"; do
         --quiet > /dev/null
 done
 
-echo "Done! Secrets created and uploaded to Secret Manager."
+# --- 4. Upload to GCS Bucket ---
+BUCKET_NAME="meshcentral-data-${GCP_PROJECT_ID}"
+echo "Uploading certificates to GCS Bucket: gs://$BUCKET_NAME/ ..."
+
+if gsutil cp "$ROOT_CRT" "gs://$BUCKET_NAME/root-cert-public.crt" && \
+   gsutil cp "$ROOT_KEY" "gs://$BUCKET_NAME/root-cert-private.key"; then
+    echo "Certificates uploaded successfully to GCS."
+else
+    echo "WARNING: Failed to upload to GCS. Please ensure the bucket exists and you have permissions." >&2
+    echo "Manual upload required: gsutil cp $ROOT_CRT gs://$BUCKET_NAME/root-cert-public.crt" >&2
+fi
+
+echo ""
+echo "Done! Secrets created and uploaded."
 echo "Root CA Certificate: $ROOT_CRT"
 echo "Web Server Certificate: $WEB_CRT"
 echo ""

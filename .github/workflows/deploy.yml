@@ -57,11 +57,25 @@ jobs:
       - name: Get secrets from Secret Manager
         id: secrets
         run: |
-          echo "MONGO_URL=$(gcloud secrets versions access latest --secret=mongo-url)" >> $GITHUB_OUTPUT
-          echo "CLOUDFLARE_TOKEN=$(gcloud secrets versions access latest --secret=cloudflare-token)" >> $GITHUB_OUTPUT
-          echo "OIDC_CLIENT_ID=$(gcloud secrets versions access latest --secret=oidc-client-id)" >> $GITHUB_OUTPUT
-          echo "OIDC_CLIENT_SECRET=$(gcloud secrets versions access latest --secret=oidc-client-secret)" >> $GITHUB_OUTPUT
-          echo "OIDC_ISSUER=$(gcloud secrets versions access latest --secret=oidc-issuer)" >> $GITHUB_OUTPUT
+          MONGO_URL=$(gcloud secrets versions access latest --secret=mongo-url)
+          echo "::add-mask::$MONGO_URL"
+          echo "MONGO_URL=$MONGO_URL" >> $GITHUB_OUTPUT
+
+          CLOUDFLARE_TOKEN=$(gcloud secrets versions access latest --secret=cloudflare-token)
+          echo "::add-mask::$CLOUDFLARE_TOKEN"
+          echo "CLOUDFLARE_TOKEN=$CLOUDFLARE_TOKEN" >> $GITHUB_OUTPUT
+
+          OIDC_CLIENT_ID=$(gcloud secrets versions access latest --secret=oidc-client-id)
+          echo "::add-mask::$OIDC_CLIENT_ID"
+          echo "OIDC_CLIENT_ID=$OIDC_CLIENT_ID" >> $GITHUB_OUTPUT
+
+          OIDC_CLIENT_SECRET=$(gcloud secrets versions access latest --secret=oidc-client-secret)
+          echo "::add-mask::$OIDC_CLIENT_SECRET"
+          echo "OIDC_CLIENT_SECRET=$OIDC_CLIENT_SECRET" >> $GITHUB_OUTPUT
+
+          OIDC_ISSUER=$(gcloud secrets versions access latest --secret=oidc-issuer)
+          echo "::add-mask::$OIDC_ISSUER"
+          echo "OIDC_ISSUER=$OIDC_ISSUER" >> $GITHUB_OUTPUT
 
       - name: Generate config.json
         run: |

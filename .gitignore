@@ -11,6 +11,7 @@ config-*.json
 # Cloudflare
 .dev.vars
 waker-key.json
+wrangler.toml
 
 # Node modules (if any)
 node_modules/

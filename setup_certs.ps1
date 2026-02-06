@@ -64,8 +64,9 @@ $rootCert = New-SelfSignedCertificate -CertStoreLocation Cert:\CurrentUser\My `
     -HashAlgorithm SHA256 `
     -NotAfter (Get-Date).AddYears(10)
 
-# Export Root Private Key
-$rootPwd = ConvertTo-SecureString -String "MeshCentralRootPassword123!" -Force -AsPlainText
+# Export Root Private Key (random password for temporary PFX)
+$rootPwdPlain = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+$rootPwd = ConvertTo-SecureString -String $rootPwdPlain -Force -AsPlainText
 $rootKeyPath = Get-AbsPath "root-cert-private.key"
 $rootCrtPath = Get-AbsPath "root-cert-public.crt"
 
@@ -150,7 +151,7 @@ function Convert-PfxToPem {
 }
 
 Write-Host "Converting Root CA to PEM..."
-Convert-PfxToPem -PfxPath $rootPfxPath -Pwd "MeshCentralRootPassword123!" -KeyOut $rootKeyPath -CrtOut $rootCrtPath
+Convert-PfxToPem -PfxPath $rootPfxPath -Pwd $rootPwdPlain -KeyOut $rootKeyPath -CrtOut $rootCrtPath
 
 
 # --- 2. Generate Web Server Cert ---
@@ -167,14 +168,15 @@ $webCert = New-SelfSignedCertificate -CertStoreLocation Cert:\CurrentUser\My `
     -TextExtension @("2.5.29.17={text}DNS=localhost&DNS=$Domain")
 
 $webPfxPath = Get-AbsPath "web-server.pfx"
-$webPwd = ConvertTo-SecureString -String "MeshCentralWebPassword123!" -Force -AsPlainText
+$webPwdPlain = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+$webPwd = ConvertTo-SecureString -String $webPwdPlain -Force -AsPlainText
 Export-PfxCertificate -Cert $webCert -FilePath $webPfxPath -Password $webPwd
 
 $webKeyPath = Get-AbsPath "webserver-cert-private.key"
 $webCrtPath = Get-AbsPath "webserver-cert-public.crt"
 
 Write-Host "Converting Web Server Cert to PEM..."
-Convert-PfxToPem -PfxPath $webPfxPath -Pwd "MeshCentralWebPassword123!" -KeyOut $webKeyPath -CrtOut $webCrtPath
+Convert-PfxToPem -PfxPath $webPfxPath -Pwd $webPwdPlain -KeyOut $webKeyPath -CrtOut $webCrtPath
 
 # Cleanup PFX
 Remove-Item $rootPfxPath, $webPfxPath, $rootCrtPath.Replace(".crt", ".cer") -ErrorAction SilentlyContinue

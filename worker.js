@@ -2,9 +2,12 @@
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
+      const origin = request.headers.get("Origin") || "";
+      const allowedOrigin = env.DOMAIN ? `https://${env.DOMAIN}` : "*";
+      const corsOrigin = allowedOrigin === "*" || origin === allowedOrigin ? allowedOrigin : "";
       return new Response(null, {
         headers: {
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": corsOrigin,
           "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
         },

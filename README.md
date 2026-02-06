@@ -76,17 +76,20 @@ GitHub Actions が自動的に新しいバージョンをデプロイします�
 ```
 CloudRun_mesh/
 ├── .github/workflows/
-│   └── deploy.yml          # GitHub Actions ワークフロー（自動デプロイ）
-├── service.yaml            # Cloud Run サービス定義
-├── importer.yaml           # Docker イメージインポート設定
-├── worker.js               # Cloudflare Worker（自動起動）
-├── wrangler.toml.example   # Worker 設定テンプレート（source of truth）
-├── setup_certs.ps1         # 証明書セットアップスクリプト
-├── setup_gh_secrets.ps1    # GitHub Secrets 自動設定スクリプト
-├── setup_waker_sa.ps1      # Waker SA セットアップスクリプト
-├── test-mongo.js           # MongoDB 接続テスト
-├── README.md               # このファイル
-└── SETUP_GUIDE.md          # 詳細セットアップガイド
+│   └── deploy.yml              # GitHub Actions ワークフロー（自動デプロイ）
+├── .env.example                # 環境変数テンプレート
+├── Dockerfile                  # カスタム MeshCentral イメージ
+├── service.yaml                # Cloud Run サービス定義
+├── worker.js                   # Cloudflare Worker（自動起動）
+├── wrangler.toml.example       # Worker 設定テンプレート（source of truth）
+├── setup_certs.ps1             # 証明書セットアップ（Windows）
+├── setup_certs.sh              # 証明書セットアップ（Linux/Mac）
+├── setup_gh_secrets.ps1        # GitHub Secrets 自動設定スクリプト
+├── setup_waker_sa.ps1          # Waker SA セットアップスクリプト
+├── fix_actas_permission.ps1    # デプロイ権限修正スクリプト
+├── test-mongo.js               # MongoDB 接続テスト
+├── README.md                   # このファイル
+└── SETUP_GUIDE.md              # 詳細セットアップガイド
 ```
 
 ## 主要な設定
