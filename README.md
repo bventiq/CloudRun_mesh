@@ -23,20 +23,24 @@ Google Cloud Run 上に MeshCentral をデプロイし、GitHub Actions で自�
 ## アーキテクチャ
 
 ```
-[ブラウザ/エージェント]
-        ↓ HTTPS
+[ブラウザ/エージェント (User)]
+        ↓ HTTPS (Tunnel)
 [Cloudflare Tunnel (mesh.example.com)]
-        ↓ Worker: 起動チェック & Wake-up
-        ↓ HTTP (内部)
+        ↓ gRPC/HTTP2
 [Cloud Run (3コンテナ)]
-  ├─ ingress-guard (8080) : ダミーエンドポイント
+  ├─ cloudflared          : Tunnel クライアント (メイン通信)
   ├─ meshcentral (3000)   : MeshCentral 本体
-  └─ cloudflared          : Tunnel クライアント
-        ↓
-[GCS Bucket] : 設定・データ永続化
-[MongoDB Atlas] : データベース
-[Secret Manager] : 認証情報
+  └─ ingress-guard (8080) : Wake-up 用ダミー (一般公開なし)
+        ↑
+        ↑ (Wake-up Ping: Authenticated)
+[Cloudflare Worker]
+   (Authenticated Worker / Waker SA)
 ```
+
+**セキュリティ機能**:
+1.  **Ingress Guard**: Cloud Run の公開エンドポイント (`run.app`) は `allUsers` 拒否設定。
+2.  **Authenticated Worker**: Worker だけが持つ "Waker Service Account" の鍵を使って、停止中のインスタンスを安全に叩き起こします (Wallet Attack 対策)。
+3.  **Tunnel アクセス**: 実際の通信は Tunnel 経由でのみ行われ、Ingress は Wake-up の合図にのみ使用されます。
 
 **備考**: MeshCentral コンテナは、起動速度向上のため、公式イメージをベースに必要なモジュール（OIDC等）をプリインストールしたカスタムイメージを使用しています。
 
