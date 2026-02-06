@@ -130,6 +130,23 @@ for secret_pair in "${SECRETS[@]}"; do
         --data-file="$file" \
         --project "$GCP_PROJECT_ID"
 
+    # Disable old versions (keep only latest)
+    OLD_VERSIONS=$(gcloud secrets versions list "$name" \
+        --project "$GCP_PROJECT_ID" \
+        --format="value(name)" \
+        --filter="state=ENABLED" \
+        --limit=100 2>/dev/null | tail -n +2)
+
+    if [ -n "$OLD_VERSIONS" ]; then
+        echo "$OLD_VERSIONS" | while read -r ver; do
+            echo "  Disabling old version: $ver"
+            gcloud secrets versions disable "$ver" \
+                --secret="$name" \
+                --project "$GCP_PROJECT_ID" \
+                --quiet 2>/dev/null || true
+        done
+    fi
+
     # Grant access to Cloud Run default service account
     PROJECT_NUMBER=$(gcloud projects describe "$GCP_PROJECT_ID" --format="value(projectNumber)")
     SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"

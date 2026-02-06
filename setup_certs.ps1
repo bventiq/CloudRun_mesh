@@ -211,7 +211,18 @@ foreach ($pair in $secrets) {
     
     # Add version
     gcloud secrets versions add $name --data-file="$file" --project "$env:GCP_PROJECT_ID"
-    
+
+    # Disable old versions (keep only latest)
+    $oldVersions = gcloud secrets versions list $name --project "$env:GCP_PROJECT_ID" `
+        --format="value(name)" --filter="state=ENABLED" --limit=100 2>$null |
+        Select-Object -Skip 1
+    foreach ($ver in $oldVersions) {
+        if ($ver) {
+            Write-Host "  Disabling old version: $ver"
+            gcloud secrets versions disable $ver --secret=$name --project "$env:GCP_PROJECT_ID" --quiet 2>$null
+        }
+    }
+
     # Grant Access
     # Ensure Cloud Run service account can access it (Simplified check)
     $PROJECT_NUMBER = (gcloud projects describe $env:GCP_PROJECT_ID --format="value(projectNumber)")
