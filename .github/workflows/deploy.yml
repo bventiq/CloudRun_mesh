@@ -183,3 +183,26 @@ jobs:
           WAKEUP_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           echo "Service URL: $WAKEUP_URL"
           echo "Access your service at: https://${{ env.DOMAIN }}"
+
+      - name: Cleanup old GCR images
+        run: |
+          IMAGE="gcr.io/${{ env.GCP_PROJECT_ID }}/meshcentral"
+          CURRENT_TAG="${{ env.MESHCENTRAL_VERSION }}"
+
+          echo "Cleaning up old images for $IMAGE (keeping: $CURRENT_TAG)..."
+
+          # List all digests except the currently deployed tag
+          OLD_DIGESTS=$(gcloud container images list-tags "$IMAGE" \
+            --format="get(digest)" \
+            --filter="NOT tags:${CURRENT_TAG}" \
+            2>/dev/null || true)
+
+          if [ -z "$OLD_DIGESTS" ]; then
+            echo "No old images to clean up."
+          else
+            echo "$OLD_DIGESTS" | while read -r digest; do
+              echo "Deleting: ${IMAGE}@${digest}"
+              gcloud container images delete "${IMAGE}@${digest}" --quiet --force-delete-tags 2>/dev/null || true
+            done
+            echo "Cleanup complete."
+          fi
