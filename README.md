@@ -84,9 +84,12 @@ CloudRun_mesh/
 ├── wrangler.toml.example       # Worker 設定テンプレート（source of truth）
 ├── setup_certs.ps1             # 証明書セットアップ（Windows）
 ├── setup_certs.sh              # 証明書セットアップ（Linux/Mac）
-├── setup_gh_secrets.ps1        # GitHub Secrets 自動設定スクリプト
-├── setup_waker_sa.ps1          # Waker SA セットアップスクリプト
-├── fix_actas_permission.ps1    # デプロイ権限修正スクリプト
+├── setup_gh_secrets.ps1        # GitHub Secrets 自動設定（Windows）
+├── setup_gh_secrets.sh         # GitHub Secrets 自動設定（Linux/Mac）
+├── setup_waker_sa.ps1          # Waker SA セットアップ（Windows）
+├── setup_waker_sa.sh           # Waker SA セットアップ（Linux/Mac）
+├── fix_actas_permission.ps1    # デプロイ権限修正（Windows）
+├── fix_actas_permission.sh     # デプロイ権限修正（Linux/Mac）
 ├── test-mongo.js               # MongoDB 接続テスト
 ├── README.md                   # このファイル
 └── SETUP_GUIDE.md              # 詳細セットアップガイド

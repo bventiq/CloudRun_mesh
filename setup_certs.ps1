@@ -34,11 +34,7 @@ else {
     $Domain = "mesh.example.com"
 }
 $Country = "JP"
-$State = "Tokyo"
-$Locality = "Chiyoda"
 $Organization = "MeshCentral"
-$OrganizationalUnit = "IT"
-$Email = "admin@example.com"
 
 # Check for GCloud
 try {

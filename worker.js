@@ -1,4 +1,10 @@
 // Cloudflare Worker for MeshCentral
+
+// Status codes indicating Cloud Run is offline / cold-starting
+const OFFLINE_STATUS_CODES = [502, 503, 521, 523, 530, 404];
+// Auto-refresh interval (seconds) for the loading page
+const LOADING_REFRESH_SECONDS = 3;
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -33,9 +39,7 @@ export default {
     }
 
     // 3. Keep-Alive / Wakeup Logic
-    const offlineStatusCodes = [502, 503, 521, 523, 530, 404];
-
-    if (offlineStatusCodes.includes(response.status) && !url.searchParams.has("now")) {
+    if (OFFLINE_STATUS_CODES.includes(response.status) && !url.searchParams.has("now")) {
       const acceptHeader = request.headers.get("Accept") || "";
       const isBrowser = acceptHeader.includes("text/html");
 
@@ -92,12 +96,12 @@ function getLoadingHtml() {
         h1 { font-size: 1.5rem; margin-bottom: 1rem; }
         p { color: #94a3b8; }
     </style>
-    <meta http-equiv="refresh" content="3">
+    <meta http-equiv="refresh" content="${LOADING_REFRESH_SECONDS}">
 </head>
 <body>
     <div class="spinner"></div>
     <h1>Waking up MeshCentral...</h1>
-    <p>Please wait, this may take up to 60 seconds.</p>
+    <p>Please wait, this usually takes 10-20 seconds.</p>
 </body>
 </html>`;
 }
