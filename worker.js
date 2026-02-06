@@ -1,104 +1,199 @@
+// Cloudflare Worker for MeshCentral
 export default {
   async fetch(request, env, ctx) {
-    // 1. Try to fetch the request from the Origin (MeshCentral Tunnel)
-    // When configured as a Route (e.g. mesh.example.com/*), this fetches the underlying Tunnel.
-    // If the Tunnel is down, Cloudflare throws a 530/502/521/523 error.
-    let response;
-    try {
-      // Set a strict timeout (e.g., 2 seconds) for the Origin fetch.
-      // If the Tunnel is down, we want to fail FAST and trigger the wakeup,
-      // rather than waiting for a long TCP timeout.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      response = await fetch(request, {
-        signal: controller.signal
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
       });
-      clearTimeout(timeoutId);
-
-    } catch (e) {
-      // Network error or other immediate failure
-      console.error("Fetch failed:", e);
-      // Fall through to wakeup logic by creating a dummy error response
-      response = new Response(`Tunnel Unreachable: ${e.message}`, { status: 530 });
     }
 
-    // List of status codes that indicate the Tunnel/Origin is down
-    const offlineStatusCodes = [502, 503, 521, 522, 523, 530];
     const url = new URL(request.url);
 
-    // 2. Check if the Tunnel is down (and no bypass)
-    if (offlineStatusCodes.includes(response.status) && !url.searchParams.has("now")) {
+    // 1. Health check route
+    if (url.pathname === "/healthz") {
+      return new Response("OK", { status: 200 });
+    }
 
-      // CRITICAL: Filter to ensure we ONLY wake up for humans (Browsers), not Agents.
+    // 2. Proxy Logic
+    let response;
+    try {
+      if (env.CLOUD_RUN_URL) {
+        // Construct target URL
+        const targetUrl = new URL(request.url);
+        targetUrl.host = new URL(env.CLOUD_RUN_URL).host;
+        targetUrl.protocol = "https:";
+
+        // Create new request
+        const newRequest = new Request(targetUrl, request);
+
+        // We inject the token for ALL requests because Cloud Run is receiving traffic ONLY from us.
+        const token = await getGoogleAuthToken(env, env.CLOUD_RUN_URL);
+        if (token) {
+          newRequest.headers.set("Authorization", `Bearer ${token}`);
+        } else {
+          console.warn("[Auth] Failed to get token. Sending request without Authorization header.");
+        }
+
+        response = await fetch(newRequest);
+      } else {
+        return new Response("Error: CLOUD_RUN_URL not configured", { status: 500 });
+      }
+    } catch (e) {
+      console.error("Fetch error:", e);
+      // Fallback for offline handling below
+      response = new Response("Error", { status: 502 });
+    }
+
+    // 3. Keep-Alive / Wakeup Logic
+    // List of status codes that indicate the Tunnel/Origin is down
+    const offlineStatusCodes = [502, 503, 521, 523, 530, 404];
+
+    if (offlineStatusCodes.includes(response.status) && !url.searchParams.has("now")) {
       const acceptHeader = request.headers.get("Accept") || "";
       const isBrowser = acceptHeader.includes("text/html");
 
       if (isBrowser) {
-        // 3. Ping the Cloud Run instance to wake it up
+        // Ping to ensure it's waking up (async)
         if (env.CLOUD_RUN_URL) {
           console.log(`[Wakeup] Pinging Cloud Run at ${env.CLOUD_RUN_URL}...`);
           ctx.waitUntil(
-            fetch(env.CLOUD_RUN_URL)
-              .then(resp => {
+            (async () => {
+              try {
+                const token = await getGoogleAuthToken(env, env.CLOUD_RUN_URL);
+                const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+                const resp = await fetch(env.CLOUD_RUN_URL, { headers });
                 console.log(`[Wakeup] Cloud Run Response: ${resp.status} ${resp.statusText}`);
                 if (!resp.ok) {
-                    resp.text().then(t => console.error(`[Wakeup] Error Body: ${t.slice(0, 200)}`));
+                  const t = await resp.text();
+                  console.error(`[Wakeup] Error Body: ${t.slice(0, 200)}`);
                 }
-              })
-              .catch(err => console.error("[Wakeup] Network Request Failed:", err))
+              } catch (err) {
+                console.error("[Wakeup] Network Request Failed:", err);
+              }
+            })()
           );
-        } else {
-            console.error("[Wakeup] SKIPPED: CLOUD_RUN_URL environment variable is not set!");
         }
 
-        // 4. Return a "Waking Up" HTML page with status info
-        return new Response(getLoadingHtml(response.status), {
-          headers: { "content-type": "text/html;charset=UTF-8" },
-          status: 503
+        // Return a "Waking Up" HTML page with status info
+        return new Response(getLoadingHtml(), {
+          headers: { "Content-Type": "text/html" },
+          status: 503,
         });
       }
-    }
-
-    // Tunnel is up — ping Cloud Run in the background to keep the instance alive
-    if (env.CLOUD_RUN_URL) {
-      ctx.waitUntil(
-        fetch(env.CLOUD_RUN_URL).catch(err => console.error("Keepalive ping failed", err))
-      );
     }
 
     return response;
   },
 };
 
-function getLoadingHtml(statusCode) {
-  return `
-<!DOCTYPE html>
-<html>
+// HTML for the Loading Page
+function getLoadingHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>Waking up MeshCentral...</title>
-  <meta http-equiv="refresh" content="3">
-  <style>
-    body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0f2f5; color: #333; margin: 0; }
-    .container { text-align: center; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }
-    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #1a1a1a; }
-    p { color: #666; line-height: 1.5; }
-    .status { font-family: monospace; font-size: 0.8rem; color: #aaa; margin-top: 1.5rem; }
-    .btn { display: inline-block; margin-top: 1rem; padding: 8px 16px; background: #3498db; color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waking up MeshCentral...</title>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #e2e8f0; margin: 0; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+        p { color: #94a3b8; }
+    </style>
+    <meta http-equiv="refresh" content="3">
 </head>
 <body>
-  <div class="container">
     <div class="spinner"></div>
-    <h1>Waking up Server...</h1>
-    <p>The MeshCentral instance is currently sleeping to save costs. It is being started now.</p>
-    <p>Please wait automatically (approx 10-20 seconds)...</p>
-    <a href="?now=1" class="btn">Force Try Again</a>
-    <div class="status">Source Status: ${statusCode || 'Unknown'}</div>
-  </div>
+    <h1>Waking up MeshCentral...</h1>
+    <p>Please wait, this may take up to 60 seconds.</p>
 </body>
-</html>
-  `;
+</html>`;
+}
+
+// === GOOGLE AUTH HELPER ===
+
+async function getGoogleAuthToken(env, audience) {
+  if (!env.GCP_SA_KEY) {
+    console.warn("[Auth] GCP_SA_KEY is missing. Cannot authenticate.");
+    return null;
+  }
+
+  try {
+    const saKey = JSON.parse(env.GCP_SA_KEY);
+    const pem = saKey.private_key;
+    const clientEmail = saKey.client_email;
+
+    // 1. Create JWT
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: "RS256", typ: "JWT" };
+    const claim = {
+      iss: clientEmail,
+      sub: clientEmail,
+      aud: "https://www.googleapis.com/oauth2/v4/token",
+      target_audience: audience,
+      exp: now + 3600,
+      iat: now,
+    };
+
+    const encodedHeader = b64url(JSON.stringify(header));
+    const encodedClaim = b64url(JSON.stringify(claim));
+    const data = new TextEncoder().encode(`${encodedHeader}.${encodedClaim}`);
+
+    // 2. Sign JWT
+    const binaryDer = pem2ab(pem);
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      binaryDer,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, data);
+    const encodedSignature = b64url(signature);
+    const jwt = `${encodedHeader}.${encodedClaim}.${encodedSignature}`;
+
+    // 3. Exchange for ID Token
+    const tokenResp = await fetch("https://www.googleapis.com/oauth2/v4/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion: jwt,
+      }),
+    });
+
+    if (!tokenResp.ok) {
+      const txt = await tokenResp.text();
+      console.error("[Auth] Token exchange failed:", txt);
+      return null;
+    }
+
+    const tokenData = await tokenResp.json();
+    return tokenData.id_token;
+
+  } catch (e) {
+    console.error("[Auth] Error generating token:", e);
+    return null;
+  }
+}
+
+// Helpers
+function b64url(str) {
+  if (typeof str !== "string") {
+    // Assume ArrayBuffer
+    return btoa(String.fromCharCode(...new Uint8Array(str)))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  return btoa(unescape(encodeURIComponent(str)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function pem2ab(pem) {
+  const b64 = pem.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s/g, "");
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
 }

@@ -8,8 +8,9 @@ service.resolved.yaml
 config.json
 config-*.json
 
-# Cloudflare Workers secrets (local dev)
+# Cloudflare
 .dev.vars
+waker-key.json
 
 # Node modules (if any)
 node_modules/
