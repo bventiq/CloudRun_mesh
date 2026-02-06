@@ -148,7 +148,7 @@ jobs:
           export MESH_CPU="${{ env.MESH_CPU }}"
           export MESH_MEMORY="${{ env.MESH_MEMORY }}"
           export TUNNEL_CPU="${{ env.TUNNEL_CPU }}"
-          export TUNNEL_CPU="${{ env.TUNNEL_CPU }}"
+
           export TUNNEL_MEMORY="${{ env.TUNNEL_MEMORY }}"
           export RUNTIME_SERVICE_ACCOUNT="${{ env.RUNTIME_SERVICE_ACCOUNT }}"
           
