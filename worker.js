@@ -30,6 +30,10 @@ export default {
         // Create new request
         const newRequest = new Request(targetUrl, request);
 
+        // Pass original host to backend so it generates correct redirects
+        newRequest.headers.set("X-Forwarded-Host", url.host);
+        newRequest.headers.set("X-Forwarded-Proto", "https");
+
         // We inject the token for ALL requests because Cloud Run is receiving traffic ONLY from us.
         const token = await getGoogleAuthToken(env, env.CLOUD_RUN_URL);
         if (token) {
