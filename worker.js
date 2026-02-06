@@ -37,10 +37,19 @@ export default {
       if (isBrowser) {
         // 3. Ping the Cloud Run instance to wake it up
         if (env.CLOUD_RUN_URL) {
-          console.log(`Pinging Cloud Run at ${env.CLOUD_RUN_URL} to wake up...`);
+          console.log(`[Wakeup] Pinging Cloud Run at ${env.CLOUD_RUN_URL}...`);
           ctx.waitUntil(
-            fetch(env.CLOUD_RUN_URL).catch(err => console.error("Wakeup ping failed", err))
+            fetch(env.CLOUD_RUN_URL)
+              .then(resp => {
+                console.log(`[Wakeup] Cloud Run Response: ${resp.status} ${resp.statusText}`);
+                if (!resp.ok) {
+                    resp.text().then(t => console.error(`[Wakeup] Error Body: ${t.slice(0, 200)}`));
+                }
+              })
+              .catch(err => console.error("[Wakeup] Network Request Failed:", err))
           );
+        } else {
+            console.error("[Wakeup] SKIPPED: CLOUD_RUN_URL environment variable is not set!");
         }
 
         // 4. Return a "Waking Up" HTML page with status info
