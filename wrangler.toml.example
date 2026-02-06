@@ -8,6 +8,7 @@ routes = [
 
 [vars]
 CLOUD_RUN_URL = "${CLOUD_RUN_URL}"
+# NOTE: Secrets like 'GCP_SA_KEY' are NOT defined here; they must be added via 'wrangler secret put' or Dashboard.
 
 [observability.logs]
 enabled = true
