@@ -16,7 +16,7 @@ Google Cloud Run 上に MeshCentral をデプロイし、GitHub Actions で自�
 - **OIDC 認証**: Auth0 などの OpenID Connect プロバイダーでシングルサインオン
 
 ### 開発体験
-- **自動デプロイ**: main ブランチに push すると自動的に Cloud Run にデプロイ
+- **自動デプロイ**: master ブランチに push すると自動的に Cloud Run にデプロイ
 - **バージョン管理**: MeshCentral のバージョンを環境変数で一元管理
 - **GCS 永続化**: データは GCS バケットに永続化され、再デプロイ時も保持
 
@@ -82,8 +82,9 @@ CloudRun_mesh/
 ├── worker.js               # Cloudflare Worker（自動起動）
 ├── wrangler.toml.example   # Worker 設定テンプレート（source of truth）
 ├── setup_certs.ps1         # 証明書セットアップスクリプト
+├── setup_gh_secrets.ps1    # GitHub Secrets 自動設定スクリプト
+├── setup_waker_sa.ps1      # Waker SA セットアップスクリプト
 ├── test-mongo.js           # MongoDB 接続テスト
-├── package.json            # Node.js 依存関係
 ├── README.md               # このファイル
 └── SETUP_GUIDE.md          # 詳細セットアップガイド
 ```
@@ -95,6 +96,15 @@ GitHub リポジトリの **Settings** > **Secrets and variables** > **Actions**
 - `GCP_PROJECT_ID`: Google Cloud プロジェクト ID
 - `DOMAIN`: カスタムドメイン
 - `MESHCENTRAL_VERSION`: MeshCentral バージョン
+
+**リソース・設定 (Optional with Defaults):**
+- `GCP_REGION`: リージョン (Default: `us-central1`)
+- `SERVICE_NAME`: Cloud Run サービス名 (Default: `meshcentral-server`)
+- `MIN_SCALE`: 最小インスタンス数 (Default: `0`)
+- `MAX_SCALE`: 最大インスタンス数 (Default: `3`)
+- `MESH_CPU` / `MESH_MEMORY`: MeshCentral リソース (Default: `1000m` / `1Gi`)
+- `INGRESS_CPU` / `INGRESS_MEMORY`: Ingress Guard リソース (Default: `100m` / `128Mi`)
+- `TUNNEL_CPU` / `TUNNEL_MEMORY`: Tunnel リソース (Default: `500m` / `256Mi`)
 
 **Secrets** で設定（**Repository secrets**）：
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: Workload Identity Provider の ID

@@ -106,6 +106,13 @@ echo -n "eyJ..." | gcloud secrets create cloudflare-token --data-file=-
    - **Name**: `GCP_SA_KEY`
    - **Value**: (コピーしたJSONキー)
 
+3. 以下の Variables を追加（または `wrangler.toml` に記述）:
+   - `CLOUD_RUN_URL`: (Cloud Run の URL, 例: `https://...run.app`)
+   - `WORKER_ROUTE`: (例: `mesh.example.com/*`)
+   - `ZONE_NAME`: (例: `example.com`)
+
+   ※ `wrangler.toml.example` をコピーして `wrangler.toml` を作成し、そこに記述しても構いません。
+
 ### 6.3 Worker のデプロイ
 
 リポジトリ内の `worker.js` と `wrangler.toml.example` が使用されます。

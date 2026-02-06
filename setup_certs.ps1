@@ -225,6 +225,21 @@ foreach ($pair in $secrets) {
         --role="roles/secretmanager.secretAccessor" > $null
 }
 
-Write-Host "Done! Secrets created."
+
+# --- 4. Upload to GCS Bucket ---
+$BucketName = "meshcentral-data-$env:GCP_PROJECT_ID"
+Write-Host "Uploading certificates to GCS Bucket: gs://$BucketName/ ..."
+
+try {
+    gsutil cp "$rootCrtPath" "gs://$BucketName/root-cert-public.crt"
+    gsutil cp "$rootKeyPath" "gs://$BucketName/root-cert-private.key"
+    Write-Host "Certificates uploaded successfully to GCS."
+}
+catch {
+    Write-Warning "Failed to upload to GCS. Please ensure the bucket exists and you have permissions."
+    Write-Warning "Manual upload required: gsutil cp ... gs://$BucketName/"
+}
+
+Write-Host "Done! Secrets created and files uploaded."
 Write-Host "Root CRT: $rootCrtPath"
 Write-Host "Web CRT: $webCrtPath"
