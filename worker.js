@@ -18,42 +18,18 @@ export default {
       return new Response("OK", { status: 200 });
     }
 
-    // 2. Proxy Logic
+    // 2. Proxy Logic (Default to Tunnel/Origin)
     let response;
     try {
-      if (env.CLOUD_RUN_URL) {
-        // Construct target URL
-        const targetUrl = new URL(request.url);
-        targetUrl.host = new URL(env.CLOUD_RUN_URL).host;
-        targetUrl.protocol = "https:";
-
-        // Create new request
-        const newRequest = new Request(targetUrl, request);
-
-        // Pass original host to backend so it generates correct redirects
-        newRequest.headers.set("X-Forwarded-Host", url.host);
-        newRequest.headers.set("X-Forwarded-Proto", "https");
-
-        // We inject the token for ALL requests because Cloud Run is receiving traffic ONLY from us.
-        const token = await getGoogleAuthToken(env, env.CLOUD_RUN_URL);
-        if (token) {
-          newRequest.headers.set("Authorization", `Bearer ${token}`);
-        } else {
-          console.warn("[Auth] Failed to get token. Sending request without Authorization header.");
-        }
-
-        response = await fetch(newRequest);
-      } else {
-        return new Response("Error: CLOUD_RUN_URL not configured", { status: 500 });
-      }
+      // Try fetching the original request (Tunnel)
+      // We do NOT rewrite to CLOUD_RUN_URL here, because that bypasses the Tunnel.
+      response = await fetch(request);
     } catch (e) {
       console.error("Fetch error:", e);
-      // Fallback for offline handling below
-      response = new Response("Error", { status: 502 });
+      response = new Response("Network Error", { status: 502 });
     }
 
     // 3. Keep-Alive / Wakeup Logic
-    // List of status codes that indicate the Tunnel/Origin is down
     const offlineStatusCodes = [502, 503, 521, 523, 530, 404];
 
     if (offlineStatusCodes.includes(response.status) && !url.searchParams.has("now")) {
@@ -61,16 +37,20 @@ export default {
       const isBrowser = acceptHeader.includes("text/html");
 
       if (isBrowser) {
-        // Ping to ensure it's waking up (async)
+        // Authenticated Wakeup Ping
         if (env.CLOUD_RUN_URL) {
           console.log(`[Wakeup] Pinging Cloud Run at ${env.CLOUD_RUN_URL}...`);
           ctx.waitUntil(
             (async () => {
               try {
+                // Generate Token for Waker SA
                 const token = await getGoogleAuthToken(env, env.CLOUD_RUN_URL);
                 const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+                // Ping the Ingress (this hits 'ingress-guard' but wakes up the whole pod)
                 const resp = await fetch(env.CLOUD_RUN_URL, { headers });
                 console.log(`[Wakeup] Cloud Run Response: ${resp.status} ${resp.statusText}`);
+
                 if (!resp.ok) {
                   const t = await resp.text();
                   console.error(`[Wakeup] Error Body: ${t.slice(0, 200)}`);

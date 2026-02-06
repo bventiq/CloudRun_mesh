@@ -4,8 +4,6 @@ metadata:
   name: ${SERVICE_NAME}
   annotations:
     run.googleapis.com/launch-stage: BETA
-    run.googleapis.com/ingress: all
-    run.googleapis.com/maxScale: "${MAX_SCALE}"
 spec:
   template:
     metadata:
